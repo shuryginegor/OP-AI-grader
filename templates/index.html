@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Панель проверки работ</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f7f6; color: #333; }
+        .container { max-width: 600px; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin: 0 auto; }
+        h2 { margin-top: 0; color: #2c3e50; margin-bottom: 20px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; }
+        input[type="text"], input[type="password"], select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        textarea { height: 100px; resize: vertical; }
+        .folder-wrapper { display: flex; gap: 10px; }
+
+        .btn { border: none; border-radius: 4px; cursor: pointer; font-weight: bold; padding: 12px 20px; font-size: 16px; color: white; }
+        .primary-btn { background-color: #3498db; width: 100%; }
+        .primary-btn:hover { background-color: #2980b9; }
+        .browse-btn { background-color: #34495e; padding: 10px 20px; font-size: 14px; width: auto; }
+        .browse-btn:hover { background-color: #2c3e50; }
+        .submit-btn { background-color: #2ecc71; width: 100%; }
+        .submit-btn:hover { background-color: #27ae60; }
+
+        .note { font-size: 12px; color: #7f8c8d; margin-top: 4px; }
+        #extendedForm { display: none; margin-top: 20px; border-top: 2px dashed #e0e0e0; padding-top: 20px; }
+        .error-msg { color: #e74c3c; font-weight: bold; margin-top: 10px; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Проверка документов Groq</h2>
+
+    <!-- Этап 1: Ввод ключа -->
+    <div id="keySection">
+        <div class="form-group">
+            <label for="api_key_input">Введите API Ключ Groq:</label>
+            <input type="password" id="api_key_input" placeholder="gsk_..." required>
+            <div id="keyError" class="error-msg"></div>
+        </div>
+        <button type="button" id="verifyKeyBtn" class="btn primary-btn">Подключиться и загрузить модели</button>
+    </div>
+
+    <!-- Этап 2: Основные настройки (показываются после валидации ключа) -->
+    <form id="mainForm">
+        <!-- Скрытое поле, куда скопируется проверенный ключ для отправки всей формы -->
+        <input type="hidden" id="api_key" name="api_key">
+
+        <div id="extendedForm">
+            <div class="form-group">
+                <label for="text_model">Модель для проверки текста:</label>
+                <select id="text_model" name="text_model">
+                    <!-- Заполняется динамически через JS -->
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="prompt">Промпт для проверки:</label>
+                <textarea id="prompt" name="prompt" required placeholder="Например: Проверь эссе на соответствие теме и выстави оценку от 1 до 5..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="folder_path">Папка с работами:</label>
+                <div class="folder-wrapper">
+                    <input type="text" id="folder_path" name="folder_path" required readonly placeholder="Нажмите 'Обзор' для выбора папки...">
+                    <button type="button" id="browseBtn" class="btn browse-btn">Обзор...</button>
+                </div>
+                <div class="note">Окно выбора папки откроется на вашем компьютере.</div>
+            </div>
+
+            <button type="submit" class="btn submit-btn">Запустить обработку</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    // Проверка API-ключа и загрузка моделей
+    document.getElementById('verifyKeyBtn').addEventListener('click', function() {
+        const apiKey = document.getElementById('api_key_input').value.trim();
+        const errorDiv = document.getElementById('keyError');
+        const verifyBtn = this;
+
+        if (!apiKey) {
+            errorDiv.innerText = "Пожалуйста, введите API-ключ.";
+            errorDiv.style.display = "block";
+            return;
+        }
+
+        errorDiv.style.display = "none";
+        verifyBtn.innerText = "Проверка ключа...";
+        verifyBtn.disabled = true;
+
+        fetch('/verify-key', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ api_key: apiKey })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                // Копируем ключ в скрытое поле основной формы
+                document.getElementById('api_key').value = apiKey;
+
+                // Наполняем селект текстовых моделей данными из Groq
+                const textSelect = document.getElementById('text_model');
+                textSelect.innerHTML = '';
+
+                data.text_models.forEach(model => {
+                    textSelect.options[textSelect.options.length] = new Option(model, model);
+                });
+
+                // Блокируем поле ввода ключа и показываем основную форму
+                document.getElementById('api_key_input').disabled = true;
+                verifyBtn.style.display = "none";
+                document.getElementById('extendedForm').style.display = "block";
+            } else {
+                errorDiv.innerText = data.message;
+                errorDiv.style.display = "block";
+                verifyBtn.innerText = "Подключиться и загрузить модели";
+                verifyBtn.disabled = false;
+            }
+        })
+        .catch(err => {
+            errorDiv.innerText = "Произошла сетевая ошибка при проверке ключа.";
+            errorDiv.style.display = "block";
+            verifyBtn.innerText = "Подключиться и загрузить модели";
+            verifyBtn.disabled = false;
+        });
+    });
+
+    // Вызов проводника Windows/Mac
+    document.getElementById('browseBtn').addEventListener('click', function() {
+        fetch('/select-folder', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('folder_path').value = data.folder_path;
+            } else if (data.message) {
+                alert(data.message);
+            }
+        })
+        .catch(err => alert('Не удалось запустить проводник.'));
+    });
+
+    // Отправка полной формы и старт процесса
+    document.getElementById('mainForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+
+        fetch('/start', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.success) {
+                window.location.href = '/progress-page';
+            } else {
+                alert('Ошибка: ' + data.message);
+            }
+        })
+        .catch(err => alert('Ошибка при старте обработки.'));
+    });
+</script>
+</body>
+</html>
