@@ -1,0 +1,34 @@
+name: Build macOS App
+
+on:
+  workflow_dispatch: # Позволяет запускать сборку вручную кнопкой
+
+jobs:
+  build-macos:
+    runs-on: macos-13 # GitHub запустит сборку на удаленном Mac
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11' # Версия Python для сборки
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flask pyinstaller
+        # Если ваш код использует другие библиотеки (например: openai, requests, python-dotenv), 
+        # допишите их ниже через пробел в таком же формате: pip install имя_библиотеки
+
+    - name: Build macOS App
+      run: |
+        pyinstaller --noconfirm --onefile --windowed --add-data "templates:templates" app.py
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Flask-App-Mac
+        path: dist/
