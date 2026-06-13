@@ -1,9 +1,10 @@
 name: Build App for Mac and Windows
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: # Позволяет запускать сборку вручную по кнопке
 
 jobs:
+  # --- СБОРКА ДЛЯ MAC ---
   build-macos:
     runs-on: macos-latest
     steps:
@@ -31,6 +32,7 @@ jobs:
         name: Flask-App-Mac
         path: dist/
 
+  # --- СБОРКА ДЛЯ WINDOWS ---
   build-windows:
     runs-on: windows-latest
     steps:
