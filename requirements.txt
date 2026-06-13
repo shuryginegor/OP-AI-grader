@@ -8,3 +8,5 @@ groq~=1.4.0
 easyocr~=1.7.2
 pypdf~=6.13.2
 numpy~=2.4.6
+PyQt6
+PyQt6-WebEngine
