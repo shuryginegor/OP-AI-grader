@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Выполнение проверки</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 80vh; }
+        .card { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 500px; text-align: center; }
+        .progress-container { background-color: #e0e0e0; border-radius: 20px; width: 100%; margin: 20px 0; height: 25px; overflow: hidden; position: relative; }
+        .progress-bar { background-color: #3498db; width: 0%; height: 100%; transition: width 0.3s ease; }
+        .progress-text { position: absolute; width: 100%; text-align: center; top: 3px; font-weight: bold; color: #333; font-size: 14px; }
+        .status-msg { font-size: 18px; color: #2c3e50; margin-bottom: 10px; font-weight: bold; }
+        .btn { display: inline-block; background-color: #2ecc71; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin-top: 20px; font-weight: bold; font-size: 16px; }
+        .btn:hover { background-color: #27ae60; }
+        .btn-error { background-color: #e74c3c; }
+        .btn-error:hover { background-color: #c0392b; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="status-msg" id="statusTitle">Инициализация процесса...</div>
+    <div id="counterInfo" style="color: #7f8c8d; margin-bottom: 10px;">Подготовка файлов</div>
+
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+        <div class="progress-text" id="progressText">0%</div>
+    </div>
+
+    <div id="actionArea"></div>
+</div>
+
+<script>
+    function checkStatus() {
+        fetch('/status')
+        .then(res => res.json())
+        .then(data => {
+            const bar = document.getElementById('progressBar');
+            const text = document.getElementById('progressText');
+            const title = document.getElementById('statusTitle');
+            const counter = document.getElementById('counterInfo');
+            const actionArea = document.getElementById('actionArea');
+
+            if (data.status === 'processing') {
+                title.innerText = 'Идет извлечение текста и проверка ИИ...';
+                bar.style.width = data.percentage + '%';
+                text.innerText = data.percentage + '%';
+                counter.innerText = `Обработано: ${data.current} из ${data.total} файлов`;
+                setTimeout(checkStatus, 1000);
+            }
+            else if (data.status === 'completed') {
+                title.innerText = 'Проверка успешно завершена!';
+                bar.style.width = '100%';
+                bar.style.backgroundColor = '#2ecc71';
+                text.innerText = '100%';
+                counter.innerText = `Всего файлов обработано: ${data.total}`;
+                actionArea.innerHTML = `
+                    <a href="/download" class="btn">Скачать Excel-отчет</a>
+                    <br><br>
+                    <a href="/" onclick="resetSystem()" style="color: #3498db; text-decoration: none; font-size: 14px;">← Вернуться на главную</a>
+                `;
+            }
+            else if (data.status === 'error') {
+                title.innerText = 'Произошла ошибка';
+                bar.style.width = '100%';
+                bar.style.backgroundColor = '#e74c3c';
+                text.innerText = 'Ошибка';
+                counter.innerText = data.error_message;
+                actionArea.innerHTML = `<a href="/" onclick="resetSystem()" class="btn btn-error">Назад к настройкам</a>`;
+            }
+            else {
+                setTimeout(checkStatus, 500);
+            }
+        });
+    }
+
+    function resetSystem() {
+        fetch('/reset');
+    }
+
+    checkStatus();
+</script>
+</body>
+</html>
